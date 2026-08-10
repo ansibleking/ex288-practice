@@ -1,27 +1,49 @@
 const http = require('http');
 
-let isReady = false;
-// simulate app taking 15s to become "ready" (e.g. warming cache, connecting to DB)
-setTimeout(() => { isReady = true; console.log('App is now ready'); }, 15000);
+let isReady = true;
+let isAlive = true;
 
 const server = http.createServer((req, res) => {
-  if (req.url === '/healthz') {
-    // liveness-style check: just confirm process is alive
+  // Toggle endpoints - simulate the app going unhealthy on demand
+  if (req.url === '/toggle-ready') {
+    isReady = !isReady;
+    console.log(`Readiness toggled to: ${isReady}`);
     res.writeHead(200);
-    return res.end('alive');
+    return res.end(`isReady is now ${isReady}\n`);
   }
-  if (req.url === '/readyz') {
-    // readiness-style check: confirm app is ready to serve traffic
-    if (isReady) {
+  if (req.url === '/toggle-alive') {
+    isAlive = !isAlive;
+    console.log(`Liveness toggled to: ${isAlive}`);
+    res.writeHead(200);
+    return res.end(`isAlive is now ${isAlive}\n`);
+  }
+
+  // Liveness probe target - TCP just needs port open, but let's also
+  // give an HTTP version for visibility/logging
+  if (req.url === '/livez') {
+    if (isAlive) {
       res.writeHead(200);
-      return res.end('ready');
+      return res.end('alive\n');
     } else {
-      res.writeHead(503);
-      return res.end('not ready yet');
+      // don't respond successfully - simulates a hung/broken process
+      res.writeHead(500);
+      return res.end('unhealthy\n');
     }
   }
+
+  // Readiness probe target
+  if (req.url === '/readyz') {
+    if (isReady) {
+      res.writeHead(200);
+      return res.end('ready\n');
+    } else {
+      res.writeHead(503);
+      return res.end('not ready\n');
+    }
+  }
+
   res.writeHead(200);
-  res.end('Hello from probes-practice app\n');
+  res.end(`Hello - isAlive=${isAlive} isReady=${isReady}\n`);
 });
 
 server.listen(8080, '0.0.0.0', () => {
