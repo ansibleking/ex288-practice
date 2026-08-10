@@ -1,0 +1,59 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: maven-build-pipeline
+spec:
+  params:
+    - name: maven_repo
+      type: string
+      description: "Maven repository/mirror URL to use for the build"
+    - name: image_name
+      type: string
+      description: "Name of the image to build and push"
+    - name: git_url
+      type: string
+      description: "Git repo to clone"
+    - name: git_revision
+      type: string
+      default: "main"
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: $(params.git_url)
+        - name: revision
+          value: $(params.git_revision)
+
+    - name: maven-build
+      runAfter: ["fetch-source"]
+      taskRef:
+        name: maven
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: GOALS
+          value: ["-DskipTests", "clean", "package"]
+        - name: MAVEN_MIRROR_URL
+          value: $(params.maven_repo)
+
+    - name: build-image
+      runAfter: ["maven-build"]
+      taskRef:
+        name: s2i-java
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: IMAGE
+          value: $(params.image_name)
