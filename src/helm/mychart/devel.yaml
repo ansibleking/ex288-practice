@@ -1,5 +1,5 @@
 image:
-  repository: image-registry.openshift-image-registry.svc:5000/helm-devel/myapp
+  repository: image-registry.openshift-image-registry.svc:5000/helm-devel/myapp-punda
   tag: latest
 
 label:

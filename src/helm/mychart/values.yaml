@@ -2,8 +2,8 @@
 replicaCount: 1
 
 image:
-  repository: image-registry.openshift-image-registry.svc:5000/helm-devel/myapp
-  tag: latest
+ repository: image-registry.openshift-image-registry.svc:5000/helm-devel/myapp
+ tag: latest
 
 label:
   stage: devel
