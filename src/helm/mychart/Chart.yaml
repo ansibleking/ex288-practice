@@ -1,0 +1,5 @@
+apiVersion: v2
+name: mychart
+description: Practice Helm chart for DO288/EX288 devel vs production deploy
+version: 1.0.0
+appVersion: "1.0"
