@@ -11,10 +11,10 @@ spec:
         claimName: pipeline-pvc
   params:
     - name: maven_repo
-      value: "http://REPLACE_WITH_NEXUS_MAVEN_URL/repository/maven-public/"
+      value: "https://repo1.maven.org/maven2/"
     - name: image_name
-      value: "image-registry.openshift-image-registry.svc:5000/REPLACE_NAMESPACE/catalog-app"
+      value: "image-registry.openshift-image-registry.svc:5000/maven-app/catalog-app"
     - name: git_url
-      value: "https://github.com/REPLACE_WITH_YOUR_FORK/ex288-practice.git"
+      value: "https://github.com/ansibleking/ex288-practice.git"
     - name: git_revision
       value: "main"
