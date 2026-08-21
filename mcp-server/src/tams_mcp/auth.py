@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import msal
 
 from tams_mcp.config import get_settings
-from tams_mcp.context import build_login_payload
+from tams_mcp.context import build_login_payload, merge_with_login
 
 if TYPE_CHECKING:
     from tams_mcp.tams_client import TamsClient
@@ -25,6 +25,36 @@ class AuthConfig:
     static_token: str = ""
 
 
+def _extract_token(payload: dict[str, Any]) -> str | None:
+    for key in ("token", "accessToken", "access_token", "jwt", "bearerToken", "authToken"):
+        value = payload.get(key)
+        if value:
+            return str(value)
+    nested = payload.get("data")
+    if isinstance(nested, dict):
+        return _extract_token(nested)
+    return None
+
+
+def _validate_login_response(result: Any) -> None:
+    if not isinstance(result, dict):
+        return
+
+    invalid_flags = [
+        result.get("isValid") is False,
+        result.get("result") is False,
+        str(result.get("l_LicenseStatus", "")).lower() == "false",
+    ]
+    if any(invalid_flags):
+        message = (
+            result.get("l_ErrorText")
+            or result.get("errorMsg")
+            or result.get("message")
+            or result
+        )
+        raise RuntimeError(f"TAMS login failed (GetLoginDetails): {message}")
+
+
 class TamsAuthManager:
     """Handles Connect_API login and optional Entra bearer tokens."""
 
@@ -38,8 +68,11 @@ class TamsAuthManager:
         if self._login_context is not None:
             return self._login_context
 
-        if self.config.mode == "bearer_token":
-            self._login_context = {"mode": "bearer_token"}
+        settings = get_settings()
+
+        if settings.tams_access_token or (self.config.mode == "bearer_token" and self.config.static_token):
+            token = settings.tams_access_token or self.config.static_token
+            self._login_context = {"mode": "bearer_token", "token": token}
             return self._login_context
 
         if self.config.mode in {"client_credentials", "device_code"}:
@@ -47,22 +80,40 @@ class TamsAuthManager:
             return self._login_context
 
         if self.config.mode == "none":
-            self._login_context = {}
+            self._login_context = {"login": build_login_payload(settings)}
             return self._login_context
 
-        settings = get_settings()
         if not settings.tams_username or not settings.tams_password:
-            raise RuntimeError("TAMS_USERNAME and TAMS_PASSWORD are required for tams_login mode")
+            raise RuntimeError(
+                "TAMS credentials missing. Set TAMS_USERNAME and TAMS_PASSWORD in .env, "
+                "or TAMS_ACCESS_TOKEN from an authenticated browser session."
+            )
 
         if self.client is None:
             raise RuntimeError("TAMS client is required for login")
 
         payload = build_login_payload(settings)
         result = await self.client.post_raw("/login/GetLoginDetails", json_body=payload)
-        self._login_context = {"mode": "tams_login", "login": payload, "profile": result}
+        _validate_login_response(result)
+
+        token = _extract_token(result) if isinstance(result, dict) else None
+        self._login_context = {
+            "mode": "tams_login",
+            "login": payload,
+            "profile": result,
+            "token": token,
+        }
         return self._login_context
 
+    def enrich_body(self, body: dict[str, Any] | None) -> dict[str, Any]:
+        body = dict(body or {})
+        login = (self._login_context or {}).get("login") or build_login_payload()
+        return merge_with_login(login, body)
+
     def get_authorization_header(self) -> str | None:
+        settings = get_settings()
+        if settings.tams_access_token:
+            return f"Bearer {settings.tams_access_token}"
         if self.config.mode == "bearer_token" and self.config.static_token:
             return f"Bearer {self.config.static_token}"
         if self._entra_token:

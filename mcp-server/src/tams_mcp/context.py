@@ -11,12 +11,14 @@ def build_login_payload(settings: Settings | None = None, **overrides: Any) -> d
         "useR_R": settings.tams_username,
         "password": settings.tams_password,
         "paycode": settings.tams_paycode,
+        "payCode": settings.tams_paycode,
         "companyCode": settings.tams_company_code,
         "auth_comp": settings.tams_auth_comp,
         "auth_dept": settings.tams_auth_dept,
         "auth_location": settings.tams_auth_loc,
         "auth_site": settings.tams_auth_site,
         "usertype": settings.tams_user_type,
+        "userType": settings.tams_user_type,
         "loginLanguage": "en",
         "loginType": "ESS",
     }
@@ -33,7 +35,7 @@ def build_report_payload(settings: Settings | None = None, **overrides: Any) -> 
         "auth_dept": settings.tams_auth_dept,
         "auth_location": settings.tams_auth_loc,
         "auth_site": settings.tams_auth_site,
-        "usertype": settings.tams_user_type,
+        "userType": settings.tams_user_type,
     }
     payload.update({k: v for k, v in overrides.items() if v is not None})
     return payload
@@ -52,3 +54,11 @@ def build_correction_payload(settings: Settings | None = None, **overrides: Any)
     }
     payload.update({k: v for k, v in overrides.items() if v is not None})
     return payload
+
+
+def merge_with_login(login: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    """Connect_API expects login fields embedded in POST bodies."""
+    merged = {**login, **body}
+    if "usertype" in merged and "userType" not in body:
+        merged["userType"] = merged["usertype"]
+    return merged

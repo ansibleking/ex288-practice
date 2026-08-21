@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     tams_auth_mode: str = "tams_login"
     tams_api_scope: str = ""
     tams_access_token: str = ""
+    tams_session_cookie: str = ""
 
     # Connect_API login context (from portal / HR admin)
     tams_username: str = ""
