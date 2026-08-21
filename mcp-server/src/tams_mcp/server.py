@@ -11,6 +11,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import CallToolResult, ListToolsResult, TextContent
 
 from tams_mcp.auth import AuthConfig, TamsAuthManager
+from tams_mcp.connectivity import check_tams_auth, get_session_client
 from tams_mcp.config import get_settings
 from tams_mcp.paths import resolve_swagger_path
 from tams_mcp.swagger_loader import GeneratedTool, load_tools_from_swagger
@@ -63,7 +64,7 @@ async def handle_list_tools(_ctx, _params) -> ListToolsResult:
 async def handle_call_tool(_ctx, params) -> CallToolResult:
     name = params.name
     args = params.arguments or {}
-    client = build_client()
+    client = get_session_client()
 
     try:
         if name.startswith("api_"):
@@ -103,6 +104,7 @@ async def run_server() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="TAMS Attendance MCP Server")
     parser.add_argument("--list-tools", action="store_true", help="Print registered tools and exit")
+    parser.add_argument("--check-tams", action="store_true", help="Test TAMS login and report API access")
     args = parser.parse_args()
 
     load_dotenv()
@@ -116,6 +118,9 @@ def main() -> None:
         for tool in tools:
             print(f"- {tool.name}: {tool.description}")
         return
+
+    if args.check_tams:
+        raise SystemExit(asyncio.run(check_tams_auth()))
 
     asyncio.run(run_server())
 
