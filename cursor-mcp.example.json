@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "tams-attendance-docker": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--env-file",
+        "/home/mayil/attedance/.env",
+        "tams-attendance:latest"
+      ]
+    },
+    "tams-attendance-local": {
+      "command": "/home/mayil/attedance/mcp-server/.venv/bin/tams-mcp",
+      "env": {
+        "TAMS_BASE_URL": "https://tams.emaratech.ae",
+        "TAMS_AUTH_MODE": "tams_login",
+        "TAMS_USERNAME": "YOUR-USERNAME",
+        "TAMS_PASSWORD": "YOUR-PASSWORD",
+        "TAMS_PAYCODE": "YOUR-PAYCODE",
+        "TAMS_COMPANY_CODE": "YOUR-COMPANY",
+        "TAMS_AUTH_COMP": "YOUR-AUTH-COMP",
+        "TAMS_AUTH_DEPT": "YOUR-AUTH-DEPT",
+        "SWAGGER_SPEC_PATH": "/home/mayil/attedance/swagger.json"
+      }
+    }
+  }
+}

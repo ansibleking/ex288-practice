@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+llm-profiles.json
+dist/
+*.egg-info/

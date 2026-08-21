@@ -1,0 +1,24 @@
+[project]
+name = "tams-agent"
+version = "0.1.0"
+description = "Standalone AI agent for TAMS attendance queries via MCP"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.2.0",
+  "httpx>=0.27.0",
+  "httpx2>=2.5.0",
+  "python-dotenv>=1.0.0",
+  "pydantic-settings>=2.3.0",
+  "openai>=1.40.0",
+  "anthropic>=0.34.0",
+]
+
+[project.scripts]
+tams-agent = "tams_agent.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
