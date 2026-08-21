@@ -1,8 +1,49 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from tams_mcp.config import Settings, get_settings
+
+REPORT_SCOPE_KEYS = frozenset(
+    {
+        "auth_comp",
+        "auth_dept",
+        "auth_location",
+        "auth_site",
+        "userType",
+        "usertype",
+        "companyCode",
+        "payCode",
+        "paycode",
+    }
+)
+
+MONTHLY_REPORT_DEFAULTS: dict[str, str] = {
+    "g_Company": "*",
+    "g_Department": "*",
+    "g_Location": "*",
+    "g_Category": "*",
+    "g_Shift": "*",
+    "g_Employee": "*",
+    "g_Grade": "*",
+    "g_Designation": "*",
+    "g_Site": "*",
+    "g_Section": "*",
+}
+
+
+def format_tams_date(value: Any) -> str:
+    """Connect_API report endpoints expect dd/MM/yyyy, not ISO dates."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        if "/" in value:
+            return value
+        return date.fromisoformat(value[:10]).strftime("%d/%m/%Y")
+    if isinstance(value, date):
+        return value.strftime("%d/%m/%Y")
+    return str(value)
 
 
 def build_login_payload(settings: Settings | None = None, **overrides: Any) -> dict[str, Any]:
@@ -26,7 +67,12 @@ def build_login_payload(settings: Settings | None = None, **overrides: Any) -> d
     return payload
 
 
-def build_report_payload(settings: Settings | None = None, **overrides: Any) -> dict[str, Any]:
+def build_report_payload(
+    settings: Settings | None = None,
+    *,
+    monthly: bool = False,
+    **overrides: Any,
+) -> dict[str, Any]:
     settings = settings or get_settings()
     payload: dict[str, Any] = {
         "payCode": settings.tams_paycode,
@@ -37,7 +83,18 @@ def build_report_payload(settings: Settings | None = None, **overrides: Any) -> 
         "auth_site": settings.tams_auth_site,
         "userType": settings.tams_user_type,
     }
-    payload.update({k: v for k, v in overrides.items() if v is not None})
+    if monthly:
+        payload.update(MONTHLY_REPORT_DEFAULTS)
+
+    normalized = {}
+    for key, value in overrides.items():
+        if value is None:
+            continue
+        if key in {"fromDate", "toDate", "dashboardDate"}:
+            normalized[key] = format_tams_date(value)
+        else:
+            normalized[key] = value
+    payload.update(normalized)
     return payload
 
 
@@ -52,13 +109,28 @@ def build_correction_payload(settings: Settings | None = None, **overrides: Any)
         "auth_site": settings.tams_auth_site,
         "userType": settings.tams_user_type,
     }
-    payload.update({k: v for k, v in overrides.items() if v is not None})
+    for key, value in overrides.items():
+        if value is None:
+            continue
+        if key in {"fromDate", "toDate"}:
+            payload[key] = format_tams_date(value)
+        else:
+            payload[key] = value
     return payload
 
 
 def merge_with_login(login: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
-    """Connect_API expects login fields embedded in POST bodies."""
+    """Full login payload merge — only for /login/* endpoints."""
     merged = {**login, **body}
+    if "usertype" in merged and "userType" not in body:
+        merged["userType"] = merged["usertype"]
+    return merged
+
+
+def merge_report_scope(login: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    """Report models reject unknown fields (additionalProperties=false)."""
+    scope = {k: v for k, v in login.items() if k in REPORT_SCOPE_KEYS and v not in (None, "")}
+    merged = {**scope, **body}
     if "usertype" in merged and "userType" not in body:
         merged["userType"] = merged["usertype"]
     return merged

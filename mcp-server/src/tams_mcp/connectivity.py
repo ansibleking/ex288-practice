@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import asyncio
-
 from tams_mcp.auth import AuthConfig, TamsAuthManager
 from tams_mcp.config import get_settings
+from tams_mcp.context import build_report_payload
 from tams_mcp.tams_client import TamsApiError, TamsClient
 
 _session_client: TamsClient | None = None
@@ -49,11 +48,10 @@ async def check_tams_auth() -> int:
         from datetime import date
 
         today = date.today()
-        start = today.replace(day=1).isoformat()
-        end = today.isoformat()
+        start = today.replace(day=1)
         result = await client.post(
             "/MonthlyReports/GetEmployeeWiseAttendance",
-            json_body={"fromDate": start, "toDate": end},
+            json_body=build_report_payload(monthly=True, fromDate=start, toDate=today),
         )
         if isinstance(result, dict) and result.get("error"):
             print(f"Report call: FAILED ({result})")
@@ -67,9 +65,3 @@ async def check_tams_auth() -> int:
         print(f"Report call: FAILED ({exc})")
         return 1
 
-
-def reset_session_client() -> None:
-    global _session_client
-    if _session_client is not None:
-        asyncio.get_event_loop().create_task(_session_client.aclose())
-    _session_client = None

@@ -64,6 +64,11 @@ class TamsClient:
                 f"{path}. Check TAMS_USERNAME/TAMS_PASSWORD and TAMS_AUTH_* scope fields in .env."
                 + cookie_hint
             )
+        if response.status_code in {400, 422}:
+            detail = response.text.strip()[:800] or response.reason_phrase
+            raise TamsApiError(
+                f"TAMS API returned {response.status_code} for {path}: {detail}"
+            )
         response.raise_for_status()
 
     async def post_raw(
@@ -95,9 +100,10 @@ class TamsClient:
         *,
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
+        body_kind: str = "report",
     ) -> Any:
         await self.auth.ensure_login()
-        body = self.auth.enrich_body(json_body)
+        body = self.auth.enrich_body(json_body, body_kind=body_kind)
         return await self.post_raw(path, params=params, json_body=body)
 
     async def get(self, path: str, params: dict[str, Any] | None = None) -> Any:

@@ -26,13 +26,17 @@ LLM_PROFILE=claude-sonnet sudo docker-compose --profile agent run --rm agent -- 
 sudo docker-compose --profile agent run --rm agent -- --llm qwen-122b "Get employee wise attendance report"
 ```
 
+
+
 ### Anthropic Claude
 
 ```bash
 # ANTHROPIC_API_KEY must be in .env
-sudo docker-compose --profile agent run --rm agent -- --llm claude-sonnet "Get employee wise attendance report"
+sudo docker-compose --profile agent run net "Get employee wise attendance report"
 sudo docker-compose --profile agent run --rm agent -- --llm claude-haiku "Quick summary"
 ```
+
+
 
 ### Using env var instead of --llm (easiest in Docker)
 
@@ -40,6 +44,8 @@ sudo docker-compose --profile agent run --rm agent -- --llm claude-haiku "Quick 
 LLM_PROFILE=claude-sonnet sudo docker-compose --profile agent run --rm agent -- "Get employee wise attendance report"
 LLM_PROFILE=qwen-122b sudo docker-compose --profile agent run --rm agent -- "Get employee wise attendance report"
 ```
+
+
 
 ## 4. Setup files
 
@@ -59,19 +65,25 @@ OPENAI_API_KEY=your-jwt-or-key
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
+
+
 ## 5. Rebuild after code changes
 
 ```bash
 sudo docker-compose build --no-cache
 ```
 
+
+
 ## Quick reference
 
-| Want | Command |
-|------|---------|
-| Qwen on-prem | `LLM_PROFILE=qwen-122b sudo docker-compose --profile agent run --rm agent -- "question"` |
-| Claude | `LLM_PROFILE=claude-sonnet sudo docker-compose --profile agent run --rm agent -- "question"` |
-| Check active LLM | `... agent -- --show-llm` |
-| List profiles | `... agent -- --list-llm-profiles` |
 
-**Always put `--` before agent flags**, and the question in quotes at the end.
+| Want             | Command                                                                                      |
+| ---------------- | -------------------------------------------------------------------------------------------- |
+| Qwen on-prem     | `LLM_PROFILE=qwen-122b sudo docker-compose --profile agent run --rm agent -- "question"`     |
+| Claude           | `LLM_PROFILE=claude-sonnet sudo docker-compose --profile agent run --rm agent -- "question"` |
+| Check active LLM | `... agent -- --show-llm`                                                                    |
+| List profiles    | `... agent -- --list-llm-profiles`                                                           |
+
+
+**Always put** `--` **before agent flags**, and the question in quotes at the end.
