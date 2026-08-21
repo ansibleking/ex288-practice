@@ -1,0 +1,74 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: maven-build-pipeline
+spec:
+  params:
+    - name: maven_repo
+      type: string
+      description: "Maven repository/mirror URL to use for the build"
+    - name: image_name
+      type: string
+      description: "Image name to define (used later if pipeline includes an image-build task)"
+    - name: git_url
+      type: string
+      description: "Git repo to clone"
+    - name: git_revision
+      type: string
+      default: "main"
+    - name: context_dir
+      type: string
+      description: "Subdirectory within the repo containing pom.xml"
+      default: "."
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+        kind: Task
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: $(params.git_url)
+        - name: revision
+          value: $(params.git_revision)
+
+    - name: maven-build
+      runAfter: ["fetch-source"]
+      taskRef:
+        name: maven
+        kind: Task
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: GOALS
+          value:
+            - "-f"
+            - "$(params.context_dir)/pom.xml"
+            - "-DskipTests"
+            - "clean"
+            - "package"
+        - name: MAVEN_MIRROR_URL
+          value: $(params.maven_repo)
+        - name: MAVEN_IMAGE
+          value: "docker.io/library/maven:3.8-openjdk-11"
+
+    - name: build-image
+      runAfter: ["maven-build"]
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: IMAGE
+          value: $(params.image_name)
+        - name: CONTEXT
+          value: $(params.context_dir)
+        - name: TLSVERIFY
+          value: "false"

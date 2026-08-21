@@ -1,0 +1,29 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: maven-build-triggertemplate
+spec:
+  params:
+    - name: git-repo-url
+    - name: git-revision
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: maven-build-triggered-
+      spec:
+        pipelineRef:
+          name: maven-build-pipeline
+        workspaces:
+          - name: shared-workspace
+            persistentVolumeClaim:
+              claimName: pipeline-pvc
+        params:
+          - name: maven_repo
+            value: "http://REPLACE_WITH_NEXUS_MAVEN_URL/repository/maven-public/"
+          - name: image_name
+            value: "image-registry.openshift-image-registry.svc:5000/REPLACE_NAMESPACE/catalog-app"
+          - name: git_url
+            value: $(tt.params.git-repo-url)
+          - name: git_revision
+            value: $(tt.params.git-revision)
