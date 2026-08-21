@@ -16,7 +16,7 @@ Login step: OK (tams_login, cookies=1)
 Report call: OK (cookies=1)
 ```
 
-If login OK but report 401 → use **Option B or C** below.
+If login OK but report **400 Bad Request** → payload issue (fixed in latest code: report bodies no longer include login-only fields like `password`; dates use `dd/MM/yyyy`).
 
 ---
 

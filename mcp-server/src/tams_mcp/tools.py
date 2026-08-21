@@ -181,14 +181,16 @@ async def call_curated_tool(client: TamsClient, name: str, arguments: dict[str, 
     _, path = CURATED_ROUTES[name]
     args = _map_report_args(dict(arguments))
 
+    body_kind = "report"
     if name in {
         "get_daily_attendance",
-        "get_employee_wise_attendance",
         "get_leave_balance",
         "get_employee_attendance_list",
         "search_employees",
     }:
         body = build_report_payload(**args)
+    elif name == "get_employee_wise_attendance":
+        body = build_report_payload(monthly=True, **args)
     elif name == "get_attendance_correction":
         if "enrollment_code" in args:
             args["enrollmentCode"] = args.pop("enrollment_code")
@@ -196,13 +198,14 @@ async def call_curated_tool(client: TamsClient, name: str, arguments: dict[str, 
     elif name == "get_punch_activity":
         body = build_report_payload(**args)
         if "ssn" in args:
-            body = {"fromDate": args.get("fromDate"), "toDate": args.get("toDate"), "ssn": args["ssn"]}
+            body["ssn"] = args["ssn"]
     elif name == "get_attendance_dashboard":
         body = build_login_payload(dashboardDate=args.get("dashboardDate"), companyCode=args.get("companyCode"))
+        body_kind = "login"
     else:
         body = build_report_payload(**args)
 
-    return await client.post(path, json_body=body)
+    return await client.post(path, json_body=body, body_kind=body_kind)
 
 
 async def call_generated_tool(client: TamsClient, generated: GeneratedTool, arguments: dict[str, Any]) -> Any:
@@ -229,6 +232,8 @@ async def call_generated_tool(client: TamsClient, generated: GeneratedTool, argu
         if param["in"] == "path" and param["name"] in arguments:
             path = path.replace("{" + param["name"] + "}", str(arguments[param["name"]]))
 
+    body_kind = "login" if generated.body_schema.lower() == "login" else "report"
+
     if generated.method == "GET":
         return await client.get(path, params=query_params or None)
-    return await client.post(path, params=query_params or None, json_body=body)
+    return await client.post(path, params=query_params or None, json_body=body, body_kind=body_kind)

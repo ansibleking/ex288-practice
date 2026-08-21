@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import msal
 
 from tams_mcp.config import get_settings
-from tams_mcp.context import build_login_payload, merge_with_login
+from tams_mcp.context import build_login_payload, merge_report_scope, merge_with_login
 
 if TYPE_CHECKING:
     from tams_mcp.tams_client import TamsClient
@@ -105,10 +105,15 @@ class TamsAuthManager:
         }
         return self._login_context
 
-    def enrich_body(self, body: dict[str, Any] | None) -> dict[str, Any]:
+    def enrich_body(self, body: dict[str, Any] | None, *, body_kind: str = "report") -> dict[str, Any]:
         body = dict(body or {})
+        if body_kind == "none":
+            return body
+
         login = (self._login_context or {}).get("login") or build_login_payload()
-        return merge_with_login(login, body)
+        if body_kind == "login":
+            return merge_with_login(login, body)
+        return merge_report_scope(login, body)
 
     def get_authorization_header(self) -> str | None:
         settings = get_settings()
