@@ -19,6 +19,7 @@ REPORT_SCOPE_KEYS = frozenset(
     }
 )
 
+
 MONTHLY_REPORT_DEFAULTS: dict[str, str] = {
     "g_Company": "*",
     "g_Department": "*",
@@ -31,6 +32,7 @@ MONTHLY_REPORT_DEFAULTS: dict[str, str] = {
     "g_Site": "*",
     "g_Section": "*",
 }
+
 
 
 def format_tams_date(value: Any) -> str:
@@ -67,15 +69,16 @@ def build_login_payload(settings: Settings | None = None, **overrides: Any) -> d
     return payload
 
 
+
 def build_report_payload(
     settings: Settings | None = None,
     *,
     monthly: bool = False,
+
     **overrides: Any,
 ) -> dict[str, Any]:
     settings = settings or get_settings()
-    payload: dict[str, Any] = {
-        "payCode": settings.tams_paycode,
+    scope = {
         "companyCode": settings.tams_company_code,
         "auth_comp": settings.tams_auth_comp,
         "auth_dept": settings.tams_auth_dept,
@@ -83,10 +86,7 @@ def build_report_payload(
         "auth_site": settings.tams_auth_site,
         "userType": settings.tams_user_type,
     }
-    if monthly:
-        payload.update(MONTHLY_REPORT_DEFAULTS)
 
-    normalized = {}
     for key, value in overrides.items():
         if value is None:
             continue
@@ -95,7 +95,6 @@ def build_report_payload(
         else:
             normalized[key] = value
     payload.update(normalized)
-    return payload
 
 
 def build_correction_payload(settings: Settings | None = None, **overrides: Any) -> dict[str, Any]:
@@ -127,9 +126,7 @@ def merge_with_login(login: dict[str, Any], body: dict[str, Any]) -> dict[str, A
     return merged
 
 
-def merge_report_scope(login: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
-    """Report models reject unknown fields (additionalProperties=false)."""
-    scope = {k: v for k, v in login.items() if k in REPORT_SCOPE_KEYS and v not in (None, "")}
+
     merged = {**scope, **body}
     if "usertype" in merged and "userType" not in body:
         merged["userType"] = merged["usertype"]

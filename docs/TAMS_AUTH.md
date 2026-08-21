@@ -37,7 +37,7 @@ TAMS_AUTH_SITE=*
 TAMS_USER_TYPE=ESS
 ```
 
-Get `TAMS_AUTH_*` values from your TAMS admin (same scope as your portal user).
+Get `TAMS_AUTH_*` values from your TAMS admin (same scope as your portal user). After login, the MCP server also reads `auth_comp`, `auth_dept`, `auth_location`, and `auth_site` from the `GetLoginDetails` response when present.
 
 ---
 

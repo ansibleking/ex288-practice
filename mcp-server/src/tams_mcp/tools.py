@@ -4,7 +4,7 @@ from typing import Any
 
 from mcp.types import Tool
 
-from tams_mcp.context import build_correction_payload, build_login_payload, build_report_payload
+from tams_mcp.context import apply_default_dates, build_correction_payload, build_login_payload, build_report_payload
 from tams_mcp.swagger_loader import GeneratedTool
 from tams_mcp.tams_client import TamsClient
 
@@ -17,27 +17,47 @@ def curated_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "from_date": {"type": "string", "format": "date"},
-                    "to_date": {"type": "string", "format": "date"},
+                    "from_date": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Defaults to first day of current month",
+                    },
+                    "to_date": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Defaults to today",
+                    },
                     "pay_code": {"type": "string", "description": "Employee pay code; defaults to TAMS_PAYCODE"},
                     "company_code": {"type": "string"},
                     "department": {"type": "string"},
                 },
-                "required": ["from_date", "to_date"],
             },
         ),
         Tool(
             name="get_employee_wise_attendance",
-            description="Monthly employee-wise attendance summary (MonthlyReports/GetEmployeeWiseAttendance).",
+            description=(
+                "Monthly employee-wise attendance summary for all employees in scope. "
+                "Defaults: current calendar month, all employees (no pay_code needed)."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "from_date": {"type": "string", "format": "date"},
-                    "to_date": {"type": "string", "format": "date"},
-                    "pay_code": {"type": "string"},
-                    "department": {"type": "string"},
+                    "from_date": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Optional; defaults to first day of current month",
+                    },
+                    "to_date": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Optional; defaults to today",
+                    },
+                    "pay_code": {
+                        "type": "string",
+                        "description": "Optional filter for one employee; omit for all employees",
+                    },
+                    "department": {"type": "string", "description": "Optional department filter"},
                 },
-                "required": ["from_date", "to_date"],
             },
         ),
         Tool(
@@ -180,6 +200,7 @@ async def call_curated_tool(client: TamsClient, name: str, arguments: dict[str, 
 
     _, path = CURATED_ROUTES[name]
     args = _map_report_args(dict(arguments))
+    args = apply_default_dates(args)
 
     body_kind = "report"
     if name in {
@@ -190,7 +211,7 @@ async def call_curated_tool(client: TamsClient, name: str, arguments: dict[str, 
     }:
         body = build_report_payload(**args)
     elif name == "get_employee_wise_attendance":
-        body = build_report_payload(monthly=True, **args)
+
     elif name == "get_attendance_correction":
         if "enrollment_code" in args:
             args["enrollmentCode"] = args.pop("enrollment_code")

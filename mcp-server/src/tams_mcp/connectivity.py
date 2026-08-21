@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from tams_mcp.auth import AuthConfig, TamsAuthManager
 from tams_mcp.config import get_settings
-from tams_mcp.context import build_report_payload
+
 from tams_mcp.tams_client import TamsApiError, TamsClient
 
 _session_client: TamsClient | None = None
@@ -45,13 +45,16 @@ async def check_tams_auth() -> int:
         return 1
 
     try:
-        from datetime import date
+        scope = resolve_report_scope(await client.auth.ensure_login())
+        print(
+            "Auth scope: "
+            f"comp={'set' if scope.get('auth_comp') else 'missing'}, "
+            f"dept={'set' if scope.get('auth_dept') else 'missing'}, "
+            f"loc={'set' if scope.get('auth_location') else 'missing'}, "
+            f"site={'set' if scope.get('auth_site') else 'missing'}"
+        )
 
-        today = date.today()
-        start = today.replace(day=1)
-        result = await client.post(
-            "/MonthlyReports/GetEmployeeWiseAttendance",
-            json_body=build_report_payload(monthly=True, fromDate=start, toDate=today),
+
         )
         if isinstance(result, dict) and result.get("error"):
             print(f"Report call: FAILED ({result})")
