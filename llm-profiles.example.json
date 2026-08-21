@@ -1,0 +1,37 @@
+{
+  "default": "qwen-122b",
+  "profiles": {
+    "qwen-122b": {
+      "provider": "openai",
+      "base_url": "https://vsnaiops-qwen35-122b.project-user-murtuza-hirani.serving.mey-ai-application.dnrd.gov.ae/v1",
+      "model": "qwen/qwen3.5-122b-a10b",
+      "verify_ssl": false,
+      "timeout": 120
+    },
+    "qwen-fast": {
+      "provider": "openai",
+      "base_url": "https://your-other-endpoint.example.com/v1",
+      "model": "qwen/qwen3.5-32b",
+      "verify_ssl": false,
+      "timeout": 60
+    },
+    "claude-sonnet": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "timeout": 120
+    },
+    "claude-haiku": {
+      "provider": "anthropic",
+      "model": "claude-3-5-haiku-20241022",
+      "timeout": 60
+    },
+    "ollama-local": {
+      "provider": "openai",
+      "base_url": "http://host.containers.internal:11434/v1",
+      "model": "llama3.1",
+      "api_key": "local",
+      "verify_ssl": true,
+      "timeout": 120
+    }
+  }
+}
