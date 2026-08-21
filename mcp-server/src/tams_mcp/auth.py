@@ -113,7 +113,7 @@ class TamsAuthManager:
         login = (self._login_context or {}).get("login") or build_login_payload()
         if body_kind == "login":
             return merge_with_login(login, body)
-        return merge_report_scope(login, body)
+        return merge_report_scope(self._login_context, body)
 
     def get_authorization_header(self) -> str | None:
         settings = get_settings()
