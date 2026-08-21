@@ -5,3 +5,4 @@ __pycache__/
 llm-profiles.json
 dist/
 *.egg-info/
+.env
