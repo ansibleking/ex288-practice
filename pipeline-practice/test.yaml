@@ -60,7 +60,7 @@ spec:
     - name: build-image
       runAfter: ["maven-build"]
       taskRef:
-        name: buildah
+        name: buildah1
         kind: ClusterTask
       workspaces:
         - name: source
