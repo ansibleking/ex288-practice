@@ -2,7 +2,5 @@
 __pycache__/
 *.pyc
 .env
-llm-profiles.json
 dist/
 *.egg-info/
-.env
