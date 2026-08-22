@@ -72,4 +72,3 @@ spec:
           value: $(params.context_dir)
         - name: TLSVERIFY
           value: "false"
-            a
