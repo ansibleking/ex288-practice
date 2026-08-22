@@ -19,6 +19,17 @@ REPORT_SCOPE_KEYS = frozenset(
     }
 )
 
+PROFILE_SCOPE_MAP: dict[str, str] = {
+    "auth_comp": "auth_comp",
+    "auth_dept": "auth_dept",
+    "auth_location": "auth_location",
+    "auth_site": "auth_site",
+    "companyCode": "companyCode",
+    "paycode": "payCode",
+    "payCode": "payCode",
+    "usertype": "userType",
+    "userType": "userType",
+}
 
 MONTHLY_REPORT_DEFAULTS: dict[str, str] = {
     "g_Company": "*",
@@ -33,6 +44,21 @@ MONTHLY_REPORT_DEFAULTS: dict[str, str] = {
     "g_Section": "*",
 }
 
+
+def current_month_range(today: date | None = None) -> tuple[date, date]:
+    today = today or date.today()
+    return today.replace(day=1), today
+
+
+def apply_default_dates(args: dict[str, Any], *, today: date | None = None) -> dict[str, Any]:
+    """Fill missing fromDate/toDate with the current calendar month."""
+    args = dict(args)
+    start, end = current_month_range(today)
+    if not args.get("fromDate"):
+        args["fromDate"] = start
+    if not args.get("toDate"):
+        args["toDate"] = end
+    return args
 
 
 def format_tams_date(value: Any) -> str:
@@ -69,12 +95,34 @@ def build_login_payload(settings: Settings | None = None, **overrides: Any) -> d
     return payload
 
 
+def resolve_report_scope(login_context: dict[str, Any] | None) -> dict[str, Any]:
+    """Prefer auth scope returned by GetLoginDetails over static .env values."""
+    login_context = login_context or {}
+    login = login_context.get("login") or build_login_payload()
+    profile = login_context.get("profile") if isinstance(login_context.get("profile"), dict) else {}
+
+    scope: dict[str, Any] = {}
+    for profile_key, body_key in PROFILE_SCOPE_MAP.items():
+        value = profile.get(profile_key)
+        if value not in (None, ""):
+            scope[body_key] = value
+
+    for key in REPORT_SCOPE_KEYS:
+        if scope.get(key) in (None, ""):
+            value = login.get(key)
+            if value not in (None, ""):
+                scope[key] = value
+
+    if scope.get("usertype") and not scope.get("userType"):
+        scope["userType"] = scope["usertype"]
+    return scope
+
 
 def build_report_payload(
     settings: Settings | None = None,
     *,
     monthly: bool = False,
-
+    all_employees: bool = False,
     **overrides: Any,
 ) -> dict[str, Any]:
     settings = settings or get_settings()
@@ -86,7 +134,13 @@ def build_report_payload(
         "auth_site": settings.tams_auth_site,
         "userType": settings.tams_user_type,
     }
+    if not all_employees:
+        scope["payCode"] = settings.tams_paycode
+    payload: dict[str, Any] = dict(scope)
+    if monthly:
+        payload.update(MONTHLY_REPORT_DEFAULTS)
 
+    normalized: dict[str, Any] = {}
     for key, value in overrides.items():
         if value is None:
             continue
@@ -95,6 +149,12 @@ def build_report_payload(
         else:
             normalized[key] = value
     payload.update(normalized)
+
+    if all_employees and "payCode" not in normalized:
+        payload.pop("payCode", None)
+        payload["g_Employee"] = "*"
+
+    return payload
 
 
 def build_correction_payload(settings: Settings | None = None, **overrides: Any) -> dict[str, Any]:
@@ -126,7 +186,9 @@ def merge_with_login(login: dict[str, Any], body: dict[str, Any]) -> dict[str, A
     return merged
 
 
-
+def merge_report_scope(login_context: dict[str, Any] | None, body: dict[str, Any]) -> dict[str, Any]:
+    """Report models reject unknown fields (additionalProperties=false)."""
+    scope = resolve_report_scope(login_context)
     merged = {**scope, **body}
     if "usertype" in merged and "userType" not in body:
         merged["userType"] = merged["usertype"]

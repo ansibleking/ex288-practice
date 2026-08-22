@@ -211,7 +211,11 @@ async def call_curated_tool(client: TamsClient, name: str, arguments: dict[str, 
     }:
         body = build_report_payload(**args)
     elif name == "get_employee_wise_attendance":
-
+        body = build_report_payload(
+            monthly=True,
+            all_employees=not args.get("payCode"),
+            **args,
+        )
     elif name == "get_attendance_correction":
         if "enrollment_code" in args:
             args["enrollmentCode"] = args.pop("enrollment_code")
