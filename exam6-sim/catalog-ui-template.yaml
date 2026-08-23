@@ -1,0 +1,115 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: catalog-ui-template
+  annotations:
+    description: "Deploys catalog-ui Node.js frontend connected to petroldb-backend API"
+objects:
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ${APP_NAME}
+
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ${APP_NAME}
+    spec:
+      source:
+        type: Git
+        git:
+          uri: ${GIT_REPO_URL}
+          ref: ${GIT_REF}
+        contextDir: ${CONTEXT_DIR}
+      strategy:
+        type: Source
+        sourceStrategy:
+          from:
+            kind: ImageStreamTag
+            namespace: openshift
+            name: 'nodejs:18-ubi9'
+          env:
+            - name: npm_config_registry
+              value: ${NPM_REGISTRY}
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ${APP_NAME}:latest
+      triggers:
+        - type: ConfigChange
+        - type: ImageChange
+
+  - apiVersion: apps.openshift.io/v1
+    kind: DeploymentConfig
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      replicas: 1
+      selector:
+        app: ${APP_NAME}
+      template:
+        metadata:
+          labels:
+            app: ${APP_NAME}
+        spec:
+          containers:
+            - name: ${APP_NAME}
+              image: ${APP_NAME}:latest
+              ports:
+                - containerPort: 8080
+              env:
+                - name: BACKEND_API_URL
+                  value: ${BACKEND_API_URL}
+              readinessProbe:
+                httpGet:
+                  path: /health
+                  port: 8080
+                initialDelaySeconds: 5
+                periodSeconds: 10
+      triggers:
+        - type: ConfigChange
+        - type: ImageChange
+          imageChangeParams:
+            automatic: true
+            containerNames:
+              - ${APP_NAME}
+            from:
+              kind: ImageStreamTag
+              name: ${APP_NAME}:latest
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${APP_NAME}
+    spec:
+      selector:
+        app: ${APP_NAME}
+      ports:
+        - port: 8080
+          targetPort: 8080
+
+  - apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+      name: ${APP_NAME}
+    spec:
+      to:
+        kind: Service
+        name: ${APP_NAME}
+
+parameters:
+  - name: APP_NAME
+    value: "catalog-ui"
+    required: true
+  - name: GIT_REPO_URL
+    required: true
+  - name: GIT_REF
+    value: "main"
+  - name: CONTEXT_DIR
+    value: "exam6-sim/frontend"
+  - name: NPM_REGISTRY
+    required: true
+  - name: BACKEND_API_URL
+    required: true
