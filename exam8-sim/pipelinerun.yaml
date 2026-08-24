@@ -1,0 +1,22 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: maven-build-pipeline-run-
+spec:
+  pipelineRef:
+    name: maven-build-pipeline
+  workspaces:
+    - name: shared-workspace
+      persistentVolumeClaim:
+        claimName: pipeline-pvc
+  params:
+    - name: maven_repo
+      value: "REPLACE_WITH_YOUR_MAVEN_REGISTRY_URL"
+    - name: image_name
+      value: "image-registry.openshift-image-registry.svc:5000/exam8-sim/catalog-app:latest"
+    - name: git_url
+      value: "https://github.com/ansibleking/ex288-practice.git"
+    - name: git_revision
+      value: "main"
+    - name: context_dir
+      value: "exam8-sim/maven-app"
