@@ -1,0 +1,53 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: catalog-ui-build-template
+  annotations:
+    description: "Build template: creates ImageStream + BuildConfig for catalog-ui"
+objects:
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ${APP_NAME}
+
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ${APP_NAME}
+    spec:
+      source:
+        type: Git
+        git:
+          uri: ${GIT_REPO_URL}
+          ref: ${GIT_REF}
+        contextDir: ${CONTEXT_DIR}
+      strategy:
+        type: Source
+        sourceStrategy:
+          from:
+            kind: ImageStreamTag
+            namespace: openshift
+            name: 'nodejs:18-ubi9'
+          env:
+            - name: npm_config_registry
+              value: ${NPM_REGISTRY}
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ${APP_NAME}:latest
+      triggers:
+        - type: ConfigChange
+        - type: ImageChange
+
+parameters:
+  - name: APP_NAME
+    value: "catalog-ui"
+    required: true
+  - name: GIT_REPO_URL
+    required: true
+  - name: GIT_REF
+    value: "main"
+  - name: CONTEXT_DIR
+    required: true
+  - name: NPM_REGISTRY
+    required: true
