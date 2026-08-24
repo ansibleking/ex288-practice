@@ -1,0 +1,10 @@
+.env
+backend/.venv/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache/
+backend/app/static/
+backend/*.egg-info/
+frontend/node_modules/
+frontend/dist/
+data/
