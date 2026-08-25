@@ -100,12 +100,6 @@ class Settings(BaseSettings):
     scheduler_poll_seconds: float = 30.0
 
     @property
-    def llm_configured(self) -> bool:
-        if self.default_llm_provider.lower() == "onprem":
-            return bool(self.onprem_llm_base_url)
-        return bool(self.anthropic_api_key)
-
-    @property
     def reporting_service_configured(self) -> bool:
         return bool(self.jira_reporting_service_field_id)
 

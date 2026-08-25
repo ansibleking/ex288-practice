@@ -1714,6 +1714,73 @@ table.data-table {
   text-overflow: ellipsis;
 }
 
+.llm-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.llm-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.llm-provider-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.llm-provider-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.llm-provider-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.llm-provider-card-header h3 {
+  margin: 0;
+  font-size: 15px;
+  flex: 1;
+}
+
+.llm-provider-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.llm-test-result {
+  margin: 0;
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+}
+
+.llm-test-ok {
+  color: var(--severity-low);
+}
+
+.llm-test-fail {
+  color: var(--severity-critical);
+}
+
+@media (max-width: 700px) {
+  .llm-provider-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .feed-page {
     grid-template-columns: 1fr;

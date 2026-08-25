@@ -245,6 +245,26 @@ export interface NetworkDiagram {
   summary: string;
 }
 
+export type LlmProvider = "onprem" | "anthropic";
+
+export interface LlmProviderStatus {
+  configured: boolean;
+}
+
+export interface LlmSettings {
+  provider: LlmProvider;
+  default_provider: LlmProvider;
+  override_active: boolean;
+  onprem: LlmProviderStatus;
+  anthropic: LlmProviderStatus;
+}
+
+export interface LlmProviderTestResult {
+  ok: boolean;
+  latency_ms: number | null;
+  error: string | null;
+}
+
 export interface ScheduleCreateRequest {
   start_at: string;
   end_at?: string;

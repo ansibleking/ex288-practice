@@ -19,7 +19,7 @@ def _settings(tmp_path) -> Settings:
         jira_issue_type="Task",
         jira_managed_label="aiops-managed",
         jira_resolved_transition_name="Done",
-        anthropic_api_key="test-anthropic-key",
+        anthropic_api_key="sk-ant-test-key",
         database_path=str(tmp_path / "audit.db"),
     )
 
@@ -722,6 +722,110 @@ def test_sheets_parse_rejects_unsupported_file_type():
 
     assert response.status_code == 400
     assert "Only .xlsx and .csv" in response.json()["detail"]
+
+
+def test_get_llm_settings_treats_env_example_placeholder_as_not_configured(tmp_path):
+    from app.config import get_settings as get_settings_dep
+
+    settings = Settings(
+        jira_base_url="https://jira.example.internal",
+        jira_pat="test-token",
+        jira_project_key="AIOPS",
+        anthropic_api_key="replace-with-anthropic-api-key",
+        database_path=str(tmp_path / "audit.db"),
+    )
+    app.dependency_overrides[get_settings_dep] = lambda: settings
+    client = TestClient(app)
+
+    response = client.get("/api/settings/llm")
+
+    assert response.json()["anthropic"]["configured"] is False
+
+
+def test_get_llm_settings_reports_effective_provider_and_configured_status():
+    # _settings() fixture: default_llm_provider defaults to "anthropic",
+    # anthropic_api_key is set, onprem_llm_base_url is not.
+    client = TestClient(app)
+
+    response = client.get("/api/settings/llm")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["provider"] == "anthropic"
+    assert body["default_provider"] == "anthropic"
+    assert body["override_active"] is False
+    assert body["anthropic"]["configured"] is True
+    assert body["onprem"]["configured"] is False
+
+
+def test_put_llm_settings_sets_override_and_takes_effect_immediately():
+    client = TestClient(app)
+
+    response = client.put("/api/settings/llm", json={"provider": "onprem"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["provider"] == "onprem"
+    assert body["override_active"] is True
+    # A second GET reflects the same override -- proves it's persisted, not
+    # just echoed back from the PUT response.
+    follow_up = client.get("/api/settings/llm")
+    assert follow_up.json()["provider"] == "onprem"
+
+
+def test_put_llm_settings_null_clears_override():
+    client = TestClient(app)
+    client.put("/api/settings/llm", json={"provider": "onprem"})
+
+    response = client.put("/api/settings/llm", json={"provider": None})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["provider"] == "anthropic"
+    assert body["override_active"] is False
+
+
+def test_put_llm_settings_rejects_unknown_provider():
+    client = TestClient(app)
+
+    response = client.put("/api/settings/llm", json={"provider": "bogus"})
+
+    assert response.status_code == 400
+
+
+def test_test_llm_provider_reports_success(monkeypatch):
+    import app.routers.settings as settings_router
+
+    mock_client = AsyncMock()
+    mock_client.parse.return_value = settings_router._PingResult(ok=True)
+    monkeypatch.setattr(settings_router, "get_llm_client_for_provider", lambda *a, **k: mock_client)
+    client = TestClient(app)
+
+    response = client.post("/api/settings/llm/test", json={"provider": "anthropic"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["error"] is None
+    assert isinstance(body["latency_ms"], int)
+    mock_client.aclose.assert_awaited_once()
+
+
+def test_test_llm_provider_reports_failure_without_crashing(monkeypatch):
+    import app.routers.settings as settings_router
+
+    mock_client = AsyncMock()
+    mock_client.parse.side_effect = RuntimeError("Name or service not known")
+    monkeypatch.setattr(settings_router, "get_llm_client_for_provider", lambda *a, **k: mock_client)
+    client = TestClient(app)
+
+    response = client.post("/api/settings/llm/test", json={"provider": "onprem"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is False
+    assert "Name or service not known" in body["error"]
+    mock_client.aclose.assert_awaited_once()
 
 
 def test_schedule_create_and_list():

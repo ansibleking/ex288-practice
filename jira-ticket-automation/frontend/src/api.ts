@@ -7,6 +7,9 @@ import type {
   ExtraSelectField,
   FeedResponse,
   JiraTicketDetail,
+  LlmProvider,
+  LlmProviderTestResult,
+  LlmSettings,
   NetworkDiagram,
   PaginatedTickets,
   ParsedWorkbook,
@@ -163,6 +166,26 @@ export function generateNetworkDiagram(headers: string[], rows: string[][]): Pro
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ headers, rows }),
+  });
+}
+
+export function getLlmSettings(): Promise<LlmSettings> {
+  return request<LlmSettings>("/settings/llm");
+}
+
+export function setLlmProvider(provider: LlmProvider | null): Promise<LlmSettings> {
+  return request<LlmSettings>("/settings/llm", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider }),
+  });
+}
+
+export function testLlmProvider(provider: LlmProvider): Promise<LlmProviderTestResult> {
+  return request<LlmProviderTestResult>("/settings/llm/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider }),
   });
 }
 

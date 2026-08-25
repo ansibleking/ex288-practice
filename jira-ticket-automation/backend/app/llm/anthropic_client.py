@@ -9,8 +9,22 @@ from app.config import Settings
 class AnthropicStructuredClient:
     """Structured-output client backed by the Anthropic Messages API."""
 
-    def __init__(self, settings: Settings, client: anthropic.AsyncAnthropic | None = None):
-        self._client = client or anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    def __init__(
+        self,
+        settings: Settings,
+        client: anthropic.AsyncAnthropic | None = None,
+        timeout: float | None = None,
+    ):
+        if client is not None:
+            self._client = client
+        else:
+            kwargs: dict = {"api_key": settings.anthropic_api_key}
+            # Only pass timeout when explicitly given -- passing timeout=None
+            # to the SDK means "no timeout" (unlimited), not "use its
+            # default", which isn't what an unset override should mean here.
+            if timeout is not None:
+                kwargs["timeout"] = timeout
+            self._client = anthropic.AsyncAnthropic(**kwargs)
         self._model = settings.default_llm_model
 
     async def aclose(self) -> None:

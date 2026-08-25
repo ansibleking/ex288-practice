@@ -5,14 +5,15 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from app.config import Settings
+from app.llm import get_llm_client
 from app.llm.base import StructuredLLMClient
-from app.llm.onprem_client import OnPremStructuredClient
 
-# A network access sheet's rows are internal topology data -- always route
-# this through the on-prem model regardless of DEFAULT_LLM_PROVIDER, so it
-# never leaves the on-prem boundary even if that setting is later switched to
-# "anthropic" for classification. This is a deliberate, narrower choice than
-# get_llm_client(settings), not an oversight.
+# Network topology data is sensitive, so this defaults to the on-prem model
+# (DEFAULT_LLM_PROVIDER=onprem in .env) rather than Anthropic's API. Unlike
+# earlier, that's no longer hardcoded here -- get_llm_client() follows
+# whichever provider is currently active via /api/settings/llm, so switching
+# to Anthropic there (a visible, deliberate action, not a silent default)
+# also applies here.
 MAX_DIAGRAM_ROWS = 150
 
 # Extracting a graph from dozens of sheet rows under strict JSON-schema
@@ -140,7 +141,7 @@ async def generate_network_diagram(
     llm_client: StructuredLLMClient | None = None,
 ) -> NetworkDiagram:
     owns_client = llm_client is None
-    llm_client = llm_client or OnPremStructuredClient(settings, timeout=DIAGRAM_LLM_TIMEOUT_SECONDS)
+    llm_client = llm_client or get_llm_client(settings, timeout=DIAGRAM_LLM_TIMEOUT_SECONDS)
     try:
         return await llm_client.parse(
             system=_SYSTEM_PROMPT,

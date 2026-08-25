@@ -12,6 +12,8 @@ from app.audit import AuditStore
 from app.config import Settings, get_settings
 from app.jira_client import JiraClient, JiraClientError
 from app.routers import approvals, audit, feed, pending, schedule, sheets, tickets
+from app.routers import settings as settings_router
+from app.runtime_settings import effective_provider
 from app.schedule_store import ScheduleStore
 from app.scheduler_runner import scheduler_loop
 
@@ -54,14 +56,21 @@ app.include_router(tickets.router)
 app.include_router(schedule.router)
 app.include_router(approvals.router)
 app.include_router(sheets.router)
+app.include_router(settings_router.router)
 
 
 @app.get("/api/health")
 async def health(settings: Settings = Depends(get_settings)) -> dict:
+    current_provider = effective_provider(settings)
+    llm_configured = (
+        bool(settings.onprem_llm_base_url)
+        if current_provider == "onprem"
+        else bool(settings.anthropic_api_key)
+    )
     result: dict = {
-        "llm_provider": settings.default_llm_provider,
+        "llm_provider": current_provider,
         "llm_model": settings.default_llm_model,
-        "llm_configured": settings.llm_configured,
+        "llm_configured": llm_configured,
         "reporting_service_configured": settings.reporting_service_configured,
     }
     try:
