@@ -1,7 +1,7 @@
 FROM quay.io/fedora/fedora-bootc:42
 
 # Create user 'mayil' with password 'redhat', add to wheel (sudo) group
-RUN useradd -m -G wheel -d /var/home/mayil mayil && \
+RUN useradd -m -G wheel -d /home/mayil mayil && \
     echo "mayil:redhat" | chpasswd
 
 # Allow wheel group passwordless sudo
