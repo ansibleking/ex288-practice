@@ -1,81 +1,5 @@
-name: Build Fedora bootc Image
-
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'Containerfile'
-      - '.github/workflows/bootc-build.yml'
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/fedora-bootc-mayil
-
-jobs:
-  build-and-push:
-    name: Build & Push bootc Image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to ghcr.io
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract image metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=sha,format=short
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push bootc image
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Containerfile
-          platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Image digest
-        run: |
-          echo "✅ Image built and pushed successfully!"
-          echo "📦 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          echo "🔖 Tags : ${{ steps.meta.outputs.tags }}"
-          echo "🔑 Digest: ${{ steps.build.outputs.digest }}"
-
   build-disk-image:
-    name: Build QCOW2 Disk Image
+    name: Build Disk Images (QCOW2 + VMDK)
     runs-on: ubuntu-latest
     needs: build-and-push
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -105,12 +29,12 @@ jobs:
       - name: Create output directory
         run: mkdir -p output
 
-      - name: Pull bootc image first
+      - name: Pull bootc image
         run: |
           sudo podman pull \
             ghcr.io/${{ env.IMAGE_NAME }}:latest
 
-      - name: Build QCOW2 disk image with bootc-image-builder
+      - name: Build QCOW2 + VMDK disk images
         run: |
           sudo podman run \
             --rm \
@@ -121,13 +45,24 @@ jobs:
             -v /var/lib/containers/storage:/var/lib/containers/storage \
             quay.io/centos-bootc/bootc-image-builder:latest \
             --type qcow2 \
+            --type vmdk \
             --rootfs xfs \
             --local \
             ghcr.io/${{ env.IMAGE_NAME }}:latest
 
-      - name: Upload QCOW2 as artifact
+      - name: List output files
+        run: find output/ -type f | sort
+
+      - name: Upload QCOW2 artifact
         uses: actions/upload-artifact@v4
         with:
           name: fedora-bootc-mayil-qcow2
           path: output/qcow2/disk.qcow2
+          retention-days: 7
+
+      - name: Upload VMDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fedora-bootc-mayil-vmdk
+          path: output/vmdk/disk.vmdk
           retention-days: 7
