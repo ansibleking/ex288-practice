@@ -10,7 +10,7 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:   # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -22,14 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write   # needed to push to ghcr.io
+      packages: write
 
     steps:
-      # ── 1. Checkout source ──────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Log in to GitHub Container Registry ──────────────────────────
       - name: Log in to ghcr.io
         uses: docker/login-action@v3
         with:
@@ -37,34 +35,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 3. Extract image metadata (tags & labels) ────────────────────────
       - name: Extract image metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # tag with branch name  e.g.  main
             type=ref,event=branch
-            # tag PRs as  pr-42
             type=ref,event=pr
-            # semver tags  v1.2.3  →  1.2.3 / 1.2 / 1
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            # always update :latest on main
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            # unique tag per commit SHA
             type=sha,format=short
 
-      # ── 4. Set up QEMU (for multi-arch builds, optional) ─────────────────
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # ── 5. Set up Docker Buildx ──────────────────────────────────────────
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ── 6. Build and push the bootc container image ──────────────────────
       - name: Build and push bootc image
         id: build
         uses: docker/build-push-action@v6
@@ -72,13 +61,12 @@ jobs:
           context: .
           file: ./Containerfile
           platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}   # don't push on PRs
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha        # use GitHub Actions cache
+          cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # ── 7. Print the image digest ────────────────────────────────────────
       - name: Image digest
         run: |
           echo "✅ Image built and pushed successfully!"
@@ -86,7 +74,6 @@ jobs:
           echo "🔖 Tags : ${{ steps.meta.outputs.tags }}"
           echo "🔑 Digest: ${{ steps.build.outputs.digest }}"
 
-  # ── Optional: Build QCOW2 disk image from the container ─────────────────
   build-disk-image:
     name: Build QCOW2 Disk Image
     runs-on: ubuntu-latest
@@ -100,12 +87,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to ghcr.io
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to ghcr.io (podman)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+          sudo podman login ghcr.io \
+            --username ${{ github.actor }} \
+            --password-stdin
 
       - name: Install dependencies
         run: |
@@ -118,6 +105,11 @@ jobs:
       - name: Create output directory
         run: mkdir -p output
 
+      - name: Pull bootc image first
+        run: |
+          sudo podman pull \
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+
       - name: Build QCOW2 disk image with bootc-image-builder
         run: |
           sudo podman run \
@@ -125,15 +117,17 @@ jobs:
             --privileged \
             --pull=newer \
             --security-opt label=type:unconfined_t \
-            -v ./output:/output \
+            -v $(pwd)/output:/output \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
             quay.io/centos-bootc/bootc-image-builder:latest \
             --type qcow2 \
             --rootfs xfs \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            --local \
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
 
       - name: Upload QCOW2 as artifact
         uses: actions/upload-artifact@v4
         with:
           name: fedora-bootc-mayil-qcow2
           path: output/qcow2/disk.qcow2
-          retention-days: 7   # keep for 7 days (free tier limit)
+          retention-days: 7
