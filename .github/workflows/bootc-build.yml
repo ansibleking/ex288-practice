@@ -122,7 +122,7 @@ jobs:
             quay.io/centos-bootc/bootc-image-builder:latest \
             --type qcow2 \
             --type vmdk \
-            --rootfs xfs \
+            --rootfs ext4 \
             --local \
             ghcr.io/${{ env.IMAGE_NAME }}:latest
 
