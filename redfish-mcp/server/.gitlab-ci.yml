@@ -1,0 +1,234 @@
+stages:
+  - verify
+  - release
+
+variables:
+  REDFISH_CORPUS_CACHE: "$CI_PROJECT_DIR/.cache/redfish-corpus"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+default:
+  image: python:3.12
+  cache:
+    key: redfish-python-cache
+    paths:
+      - .cache/pip
+      - .cache/redfish-corpus
+  before_script:
+    - python -V
+    - git --version
+    - pip install -e .[dev]
+
+lint:
+  stage: verify
+  script:
+    - ruff check src tests tools scripts
+
+typecheck:
+  stage: verify
+  script:
+    - mypy src tests tools
+
+test:
+  stage: verify
+  variables:
+    REDFISH_REQUIRE_CORPUS: "1"
+  script:
+    - pytest -q
+
+schema-index-repro:
+  stage: verify
+  script:
+    - python tools/build_schema_index.py --output /tmp/redfish_index.json.gz
+    - cmp /tmp/redfish_index.json.gz src/mirastack_redfish_mcp/data/redfish_index.json.gz
+
+corpus-freshness:
+  stage: verify
+  allow_failure: true
+  script:
+    - python tools/redfish_corpus.py --check-latest
+
+version-check:
+  stage: verify
+  script:
+    - python scripts/check_versions.py
+
+corpus-conformance:
+  stage: verify
+  script:
+    - python scripts/check_corpus_conformance.py
+
+tool-metadata:
+  stage: verify
+  script:
+    - python scripts/check_tool_metadata.py
+    - MIRASTACK_REDFISH_WRITE_MODE=full python scripts/check_tool_metadata.py
+
+mockup-read-tools:
+  stage: verify
+  services:
+    - name: dmtf/redfish-mockup-server:latest
+      alias: redfish-mockup
+  variables:
+    MIRASTACK_REDFISH_HOST: "http://redfish-mockup:8000"
+    MIRASTACK_REDFISH_USERNAME: "<bmc-username>"
+    MIRASTACK_REDFISH_PASSWORD: "<bmc-password>"
+    MIRASTACK_REDFISH_WRITE_MODE: "off"
+  script:
+    - python scripts/check_mockup_read_tools.py
+
+.release-manual-protected-tag:
+  rules:
+    - if: '$CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"'
+      when: manual
+    - when: never
+
+release-build:
+  stage: release
+  extends: .release-manual-protected-tag
+  script:
+    - pip install build cyclonedx-bom
+    - python -m build
+    - cyclonedx-py environment --output-format JSON --output-file dist/mirastack-redfish-mcp-${CI_COMMIT_TAG}-sbom.json
+  artifacts:
+    expire_in: 14 days
+    paths:
+      - dist/*.whl
+      - dist/*.tar.gz
+      - dist/*sbom*.json
+
+release-sign:
+  stage: release
+  image: ghcr.io/sigstore/cosign/cosign:v2.4.1
+  before_script: []
+  cache: []
+  extends: .release-manual-protected-tag
+  id_tokens:
+    SIGSTORE_ID_TOKEN:
+      aud: sigstore
+  needs:
+    - job: release-build
+      artifacts: true
+  script:
+    - |
+      for artifact in dist/*.whl dist/*.tar.gz dist/*sbom*.json; do
+        cosign sign-blob "${artifact}" --bundle "${artifact}.sigstore.bundle" --yes
+      done
+  artifacts:
+    expire_in: 14 days
+    paths:
+      - dist/*.sigstore.bundle
+
+release-pypi:
+  stage: release
+  extends: .release-manual-protected-tag
+  id_tokens:
+    PYPI_ID_TOKEN:
+      aud: pypi
+  needs:
+    - job: release-build
+      artifacts: true
+  script:
+    - pip install twine
+    - twine upload dist/*.whl dist/*.tar.gz
+
+release-docker:
+  stage: release
+  image: docker:27
+  before_script: []
+  cache: []
+  extends: .release-manual-protected-tag
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - VERSION="${CI_COMMIT_TAG#v}"
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - docker build -t "mirastacklabs/mirastack-redfish-mcp:${VERSION}" -t "mirastacklabs/mirastack-redfish-mcp:latest" .
+    - docker push "mirastacklabs/mirastack-redfish-mcp:${VERSION}"
+    - docker push "mirastacklabs/mirastack-redfish-mcp:latest"
+
+release-mcp-registry:
+  stage: release
+  image: debian:bookworm-slim
+  before_script: []
+  cache: []
+  extends: .release-manual-protected-tag
+  script:
+    - apt-get update
+    - apt-get install -y curl ca-certificates
+    - curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+    - install -m 0755 mcp-publisher /usr/local/bin/mcp-publisher
+    - mcp-publisher login dns google-kms --domain="${MCP_PUBLISH_DNS_DOMAIN}" --resource="${MCP_PUBLISH_GCP_KMS_RESOURCE}"
+    - mcp-publisher publish server.json
+
+release-github:
+  stage: release
+  extends: .release-manual-protected-tag
+  needs:
+    - job: release-build
+      artifacts: true
+  script:
+    - |
+      python3 - <<'PY'
+      import json
+      import mimetypes
+      import os
+      import pathlib
+      import urllib.error
+      import urllib.parse
+      import urllib.request
+
+      token = os.environ["GITHUB_RELEASE_PAT"]
+      tag = os.environ["CI_COMMIT_TAG"]
+      repo = "mirastacklabs-ai/mirastack-redfish-mcp"
+      api_base = f"https://api.github.com/repos/{repo}"
+
+      def request(url: str, method: str = "GET", payload: dict | None = None, raw: bytes | None = None, content_type: str = "application/json"):
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
+          data = None
+          if payload is not None:
+              data = json.dumps(payload).encode("utf-8")
+              headers["Content-Type"] = content_type
+          elif raw is not None:
+              data = raw
+              headers["Content-Type"] = content_type
+          req = urllib.request.Request(url, method=method, headers=headers, data=data)
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  body = resp.read()
+                  return resp.status, body
+          except urllib.error.HTTPError as exc:
+              return exc.code, exc.read()
+
+      release_payload = {
+          "tag_name": tag,
+          "name": tag,
+          "target_commitish": "main",
+          "generate_release_notes": True,
+      }
+      status, body = request(f"{api_base}/releases", method="POST", payload=release_payload)
+      if status == 422:
+          status, body = request(f"{api_base}/releases/tags/{urllib.parse.quote(tag)}", method="GET")
+      if status // 100 != 2:
+          raise SystemExit(f"Unable to create or fetch release: HTTP {status} {body.decode('utf-8', 'replace')}")
+      release = json.loads(body.decode("utf-8"))
+      upload_url = release["upload_url"].split("{", 1)[0]
+
+      for asset in sorted(pathlib.Path("dist").glob("*")):
+          if asset.suffix == ".bundle":
+              continue
+          content = asset.read_bytes()
+          mime = mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
+          upload = f"{upload_url}?name={urllib.parse.quote(asset.name)}"
+          up_status, up_body = request(upload, method="POST", raw=content, content_type=mime)
+          if up_status // 100 != 2:
+              raise SystemExit(f"Failed to upload {asset.name}: HTTP {up_status} {up_body.decode('utf-8', 'replace')}")
+          print(f"Uploaded {asset.name}")
+      PY
+

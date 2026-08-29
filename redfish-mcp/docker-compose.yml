@@ -1,0 +1,48 @@
+services:
+  redfish-mcp:
+    build: ./server
+    container_name: redfish-mcp
+    env_file:
+      - .env
+    volumes:
+      # Must exist before `docker compose up` — a missing file gets bind-mounted
+      # as an empty directory by Docker, which the server treats as a hard
+      # startup failure rather than falling back to discovery mode.
+      - ./endpoints.json:/app/endpoints.json:ro
+    command:
+      - "--transport"
+      - "streamable-http"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+      - "--path"
+      - "/mcp"
+      - "--stateless-http"
+      - "--json-response"
+    ports:
+      # Bind to loopback only: the server has no auth of its own on this
+      # endpoint, and the upstream README warns that 0.0.0.0 exposes control
+      # of the whole fleet to anything that can reach the port. Put a real
+      # auth proxy in front before binding wider than localhost.
+      - "127.0.0.1:8787:8000"
+    restart: unless-stopped
+
+  # Two fake BMCs to point the server at, for trying the fleet setup with
+  # zero real hardware:
+  #   docker compose --profile mockup up -d --build
+  #   then set MIRASTACK_REDFISH_ENDPOINTS=/app/endpoints.mockup.json in .env
+  #   (or symlink endpoints.json -> endpoints.mockup.json) and restart redfish-mcp
+  redfish-mockup-a:
+    image: docker.io/dmtf/redfish-mockup-server:latest
+    container_name: redfish-mockup-a
+    profiles: ["mockup"]
+    ports:
+      - "127.0.0.1:18000:8000"
+
+  redfish-mockup-b:
+    image: docker.io/dmtf/redfish-mockup-server:latest
+    container_name: redfish-mockup-b
+    profiles: ["mockup"]
+    ports:
+      - "127.0.0.1:18001:8000"

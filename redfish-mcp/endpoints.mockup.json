@@ -1,0 +1,14 @@
+{
+  "mockup-a": {
+    "base_url": "http://redfish-mockup-a:8000",
+    "username": "root",
+    "password": "anything-non-empty",
+    "verify_ssl": false
+  },
+  "mockup-b": {
+    "base_url": "http://redfish-mockup-b:8000",
+    "username": "root",
+    "password": "anything-non-empty",
+    "verify_ssl": false
+  }
+}

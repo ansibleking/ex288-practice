@@ -1,0 +1,6 @@
+services:
+  redfish-mockup:
+    image: dmtf/redfish-mockup-server:latest
+    container_name: mirastack-redfish-mockup
+    ports:
+      - "18000:8000"

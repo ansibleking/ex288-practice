@@ -1,0 +1,23 @@
+{
+  "idrac-rack1-node1": {
+    "base_url": "https://192.0.2.10",
+    "username": "root",
+    "password": "changeme",
+    "verify_ssl": true,
+    "read_only": false
+  },
+  "idrac-rack1-node2": {
+    "base_url": "https://192.0.2.11",
+    "username": "root",
+    "password": "changeme",
+    "verify_ssl": true,
+    "read_only": false
+  },
+  "ilo-lab": {
+    "base_url": "https://192.0.2.20",
+    "username": "administrator",
+    "password_file": "/run/secrets/ilo_lab_password",
+    "verify_ssl": true,
+    "read_only": true
+  }
+}

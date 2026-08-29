@@ -1,0 +1,179 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "ai.mirastacklabs/mirastack-redfish-mcp",
+  "title": "MIRASTACK Redfish MCP Server",
+  "description": "Governed MCP server for DMTF Redfish BMCs. Read-only by default; writes are opt-in and dry-run.",
+  "version": "0.1.2",
+  "websiteUrl": "https://mirastacklabs.ai",
+  "repository": {
+    "url": "https://github.com/mirastacklabs-ai/mirastack-redfish-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "mirastack-redfish-mcp",
+      "version": "0.1.2",
+      "runtimeHint": "uvx",
+      "environmentVariables": [
+        {
+          "name": "MIRASTACK_REDFISH_ENDPOINTS",
+          "description": "JSON payload or YAML/JSON path defining one or more Redfish endpoints.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MIRASTACK_REDFISH_DEFAULT_ENDPOINT",
+          "description": "Default endpoint name used when no endpoint argument is provided.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_HOST",
+          "description": "Single-endpoint Redfish base URL, for example https://192.0.2.10.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_USERNAME",
+          "description": "Single-endpoint Redfish username.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MIRASTACK_REDFISH_PASSWORD",
+          "description": "Single-endpoint Redfish password.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MIRASTACK_REDFISH_PASSWORD_FILE",
+          "description": "Path to a file containing the single-endpoint Redfish password.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MIRASTACK_REDFISH_VERIFY_SSL",
+          "description": "TLS verification. Defaults to true. Set false only for lab endpoints with controlled certificates.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_CA_BUNDLE",
+          "description": "Path to a custom CA bundle used for TLS verification.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_TIMEOUT_SEC",
+          "description": "HTTP timeout in seconds for Redfish requests.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_AUTH_MODE",
+          "description": "Auth mode: auto, session, or basic.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_WRITE_MODE",
+          "description": "Write tier: off (default), power, config, or full. Mutating tools are not registered unless raised.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_TOOL_PROFILE",
+          "description": "Tool profile: core, standard, or full.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_TOOLSETS",
+          "description": "Optional comma-separated toolset override.",
+          "isRequired": false
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "oci",
+      "identifier": "docker.io/mirastack/mirastack-redfish-mcp:0.1.2",
+      "runtimeHint": "docker",
+      "environmentVariables": [
+        {
+          "name": "MIRASTACK_REDFISH_ENDPOINTS",
+          "description": "JSON payload or YAML/JSON path defining one or more Redfish endpoints.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MIRASTACK_REDFISH_DEFAULT_ENDPOINT",
+          "description": "Default endpoint name used when no endpoint argument is provided.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_HOST",
+          "description": "Single-endpoint Redfish base URL, for example https://192.0.2.10.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_USERNAME",
+          "description": "Single-endpoint Redfish username.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MIRASTACK_REDFISH_PASSWORD",
+          "description": "Single-endpoint Redfish password.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MIRASTACK_REDFISH_PASSWORD_FILE",
+          "description": "Path to a file containing the single-endpoint Redfish password.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "MIRASTACK_REDFISH_VERIFY_SSL",
+          "description": "TLS verification. Defaults to true. Set false only for lab endpoints with controlled certificates.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_CA_BUNDLE",
+          "description": "Path to a custom CA bundle used for TLS verification.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_TIMEOUT_SEC",
+          "description": "HTTP timeout in seconds for Redfish requests.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_AUTH_MODE",
+          "description": "Auth mode: auto, session, or basic.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_WRITE_MODE",
+          "description": "Write tier: off (default), power, config, or full. Mutating tools are not registered unless raised.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_TOOL_PROFILE",
+          "description": "Tool profile: core, standard, or full.",
+          "isRequired": false
+        },
+        {
+          "name": "MIRASTACK_REDFISH_TOOLSETS",
+          "description": "Optional comma-separated toolset override.",
+          "isRequired": false
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "maintainer": "mirastacklabs-ai",
+      "project": "mirastack-redfish-mcp"
+    }
+  }
+}
