@@ -9,3 +9,5 @@ RUN echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel-sudo
 
 # Clean up
 RUN dnf clean all
+
+LABEL "mayil"
